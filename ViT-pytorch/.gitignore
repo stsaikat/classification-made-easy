@@ -144,3 +144,8 @@ cython_debug/
 !/logs/
 !/output/
 .idea
+checkpoint/
+data/
+logs/
+my_log.txt
+output/

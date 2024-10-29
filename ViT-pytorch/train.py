@@ -14,15 +14,28 @@ import torch.distributed as dist
 
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
-from apex import amp
-from apex.parallel import DistributedDataParallel as DDP
+# from apex import amp
+# from apex.parallel import DistributedDataParallel as DDP
 
 from models.modeling import VisionTransformer, CONFIGS
 from utils.scheduler import WarmupLinearSchedule, WarmupCosineSchedule
 from utils.data_utils import get_loader
 from utils.dist_util import get_world_size
 
+import sys
 
+class Logger(object):
+    def __init__(self, filename):
+        self.terminal = sys.stdout
+        self.log = open(filename, "a")
+    def __getattr__(self, attr):
+        return getattr(self.terminal, attr)
+    def write(self, message):
+        self.log.write(message)     
+    def flush(self):
+        self.log.flush()
+
+sys.stdout = Logger('my_log.txt')
 logger = logging.getLogger(__name__)
 
 
@@ -160,11 +173,11 @@ def train(args, model):
     else:
         scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
 
-    if args.fp16:
-        model, optimizer = amp.initialize(models=model,
-                                          optimizers=optimizer,
-                                          opt_level=args.fp16_opt_level)
-        amp._amp_state.loss_scalers[0]._loss_scale = 2**20
+    # if args.fp16:
+    #     model, optimizer = amp.initialize(models=model,
+    #                                       optimizers=optimizer,
+    #                                       opt_level=args.fp16_opt_level)
+    #     amp._amp_state.loss_scalers[0]._loss_scale = 2**20
 
     # Distributed training
     if args.local_rank != -1:
@@ -197,18 +210,18 @@ def train(args, model):
 
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
-            if args.fp16:
-                with amp.scale_loss(loss, optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            else:
-                loss.backward()
+            # if args.fp16:
+            #     with amp.scale_loss(loss, optimizer) as scaled_loss:
+            #         scaled_loss.backward()
+            # else:
+            loss.backward()
 
             if (step + 1) % args.gradient_accumulation_steps == 0:
                 losses.update(loss.item()*args.gradient_accumulation_steps)
-                if args.fp16:
-                    torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
-                else:
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+                # if args.fp16:
+                #     torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
+                # else:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                 scheduler.step()
                 optimizer.step()
                 optimizer.zero_grad()
@@ -242,7 +255,7 @@ def train(args, model):
 def main():
     parser = argparse.ArgumentParser()
     # Required parameters
-    parser.add_argument("--name", required=True,
+    parser.add_argument("--name", default='cifar10-100_500',
                         help="Name of this run. Used for monitoring.")
     parser.add_argument("--dataset", choices=["cifar10", "cifar100"], default="cifar10",
                         help="Which downstream task.")
@@ -257,7 +270,7 @@ def main():
 
     parser.add_argument("--img_size", default=224, type=int,
                         help="Resolution size")
-    parser.add_argument("--train_batch_size", default=512, type=int,
+    parser.add_argument("--train_batch_size", default=64, type=int,
                         help="Total batch size for training.")
     parser.add_argument("--eval_batch_size", default=64, type=int,
                         help="Total batch size for eval.")
@@ -325,4 +338,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if not os.path.exists('checkpoint/ViT-B_16.npz'):
+        os.system('wget https://storage.googleapis.com/vit_models/imagenet21k/ViT-B_16.npz -P checkpoint')
     main()
