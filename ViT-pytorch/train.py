@@ -72,10 +72,14 @@ def setup(args):
     # Prepare model
     config = CONFIGS[args.model_type]
 
-    num_classes = 10 if args.dataset == "cifar10" else 100
+    class_folders = [f.name for f in os.scandir(args.dataset_path) if f.is_dir()]
+    num_classes = len(class_folders)
 
     model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes)
-    model.load_from(np.load(args.pretrained_dir))
+    if args.pretrained_dir.endswith('npz'):
+        model.load_from(np.load(args.pretrained_dir))
+    elif args.pretrained_dir.endswith('bin'):
+        model.load_state_dict(torch.load(args.pretrained_dir))
     model.to(args.device)
     num_params = count_parameters(model)
 
@@ -255,6 +259,8 @@ def train(args, model):
 def main():
     parser = argparse.ArgumentParser()
     # Required parameters
+    parser.add_argument("--dataset_path", default='dataset',
+                        help="dataset path")
     parser.add_argument("--name", default='cifar10-100_500',
                         help="Name of this run. Used for monitoring.")
     parser.add_argument("--dataset", choices=["cifar10", "cifar100"], default="cifar10",
@@ -270,9 +276,9 @@ def main():
 
     parser.add_argument("--img_size", default=224, type=int,
                         help="Resolution size")
-    parser.add_argument("--train_batch_size", default=64, type=int,
+    parser.add_argument("--train_batch_size", default=16, type=int,
                         help="Total batch size for training.")
-    parser.add_argument("--eval_batch_size", default=64, type=int,
+    parser.add_argument("--eval_batch_size", default=8, type=int,
                         help="Total batch size for eval.")
     parser.add_argument("--eval_every", default=100, type=int,
                         help="Run prediction on validation set every so many steps."
@@ -307,6 +313,11 @@ def main():
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
     args = parser.parse_args()
+    
+    previous_checkpoints = os.listdir('output')
+    if(len(previous_checkpoints) > 0):
+        previous_checkpoints.sort()
+        args.pretrained_dir = os.path.join('output', previous_checkpoints[-1])
 
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1:

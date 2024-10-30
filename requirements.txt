@@ -5,3 +5,5 @@ tqdm
 tensorboard
 ml-collections
 scipy
+opencv-python
+pillow
