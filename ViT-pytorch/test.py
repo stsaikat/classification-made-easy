@@ -42,7 +42,7 @@ def set_seed(args):
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
-def main():
+def main(input_image):
     parser = argparse.ArgumentParser()
     # Required parameters
     parser.add_argument("--dataset_path", default='dataset',
@@ -130,10 +130,11 @@ def main():
     args, model = setup(args)
 
     # Training
-    test(args, model)
+    return test(args, model, input_image)
     
-def prepare_input(input_path, args):
-    image = Image.open(input_path).convert('RGB')
+def prepare_input(image, args):
+    # if not isinstance(input, Image.Image):
+    #     image = Image.open(input).convert('RGB')
     
     mTransforms = transforms.Compose([
         transforms.Resize((args.img_size, args.img_size)),
@@ -147,17 +148,21 @@ def prepare_input(input_path, args):
     return image
     
     
-def test(args, model):
+def test(args, model, input_image):
     model.eval()
-    
-    inp = prepare_input('test_0001.jpg', args)
+    inp = prepare_input(input_image, args)
     logits = model(inp)[0]
+    print(logits)
     preds = torch.argmax(logits, dim=-1)
+    conf = torch.max(logits)
+    if(conf < 2.0):
+        return "Can't recognize"
     pred = preds.detach().cpu().numpy()[0]
     
     class_names = [f.name for f in os.scandir(args.dataset_path) if f.is_dir()]
     class_names.sort()
     logger.info(class_names[pred])
+    return class_names[pred]
     
 if __name__ == "__main__":
     if not os.path.exists('checkpoint/ViT-B_16.npz'):

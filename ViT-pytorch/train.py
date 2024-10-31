@@ -22,22 +22,7 @@ from utils.scheduler import WarmupLinearSchedule, WarmupCosineSchedule
 from utils.data_utils import get_loader
 from utils.dist_util import get_world_size
 
-import sys
-
-class Logger(object):
-    def __init__(self, filename):
-        self.terminal = sys.stdout
-        self.log = open(filename, "a")
-    def __getattr__(self, attr):
-        return getattr(self.terminal, attr)
-    def write(self, message):
-        self.log.write(message)     
-    def flush(self):
-        self.log.flush()
-
-sys.stdout = Logger('my_log.txt')
 logger = logging.getLogger(__name__)
-
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -118,6 +103,7 @@ def valid(args, model, writer, test_loader, global_step):
                           bar_format="{l_bar}{r_bar}",
                           dynamic_ncols=True,
                           disable=args.local_rank not in [-1, 0])
+    epoch_iterator = test_loader
     loss_fct = torch.nn.CrossEntropyLoss()
     for step, batch in enumerate(epoch_iterator):
         batch = tuple(t.to(args.device) for t in batch)
@@ -140,7 +126,8 @@ def valid(args, model, writer, test_loader, global_step):
             all_label[0] = np.append(
                 all_label[0], y.detach().cpu().numpy(), axis=0
             )
-        epoch_iterator.set_description("Validating... (loss=%2.5f)" % eval_losses.val)
+        # epoch_iterator.set_description("Validating... (loss=%2.5f)" % eval_losses.val)
+        print("Validating... (loss=%2.5f)" % eval_losses.val)
 
     all_preds, all_label = all_preds[0], all_label[0]
     accuracy = simple_accuracy(all_preds, all_label)
@@ -207,6 +194,7 @@ def train(args, model):
                               bar_format="{l_bar}{r_bar}",
                               dynamic_ncols=True,
                               disable=args.local_rank not in [-1, 0])
+        epoch_iterator = train_loader
         for step, batch in enumerate(epoch_iterator):
             batch = tuple(t.to(args.device) for t in batch)
             x, y = batch
@@ -231,9 +219,10 @@ def train(args, model):
                 optimizer.zero_grad()
                 global_step += 1
 
-                epoch_iterator.set_description(
-                    "Training (%d / %d Steps) (loss=%2.5f)" % (global_step, t_total, losses.val)
-                )
+                # epoch_iterator.set_description(
+                #     "Training (%d / %d Steps) (loss=%2.5f)" % (global_step, t_total, losses.val)
+                # )
+                print("Training (%d / %d Steps) (loss=%2.5f)" % (global_step, t_total, losses.val))
                 if args.local_rank in [-1, 0]:
                     writer.add_scalar("train/loss", scalar_value=losses.val, global_step=global_step)
                     writer.add_scalar("train/lr", scalar_value=scheduler.get_lr()[0], global_step=global_step)
@@ -256,7 +245,7 @@ def train(args, model):
     logger.info("End Training!")
 
 
-def main():
+def main(dataset_path = 'dataset'):
     parser = argparse.ArgumentParser()
     # Required parameters
     parser.add_argument("--dataset_path", default='dataset',
@@ -288,7 +277,7 @@ def main():
                         help="The initial learning rate for SGD.")
     parser.add_argument("--weight_decay", default=0, type=float,
                         help="Weight deay if we apply some.")
-    parser.add_argument("--num_steps", default=10000, type=int,
+    parser.add_argument("--num_steps", default=100, type=int,
                         help="Total number of training epochs to perform.")
     parser.add_argument("--decay_type", choices=["cosine", "linear"], default="cosine",
                         help="How to decay the learning rate.")
@@ -330,6 +319,7 @@ def main():
                                              timeout=timedelta(minutes=60))
         args.n_gpu = 1
     args.device = device
+    args.dataset_path = dataset_path
 
     # Setup logging
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
