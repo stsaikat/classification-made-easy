@@ -1,11 +1,12 @@
 import gradio as gr
 import sys
 import time
-from vit_pytorch.vit_train_test import VITTrainTest
-
-module = VITTrainTest()
+from train_tester import TrainTest
 
 log_refresh_time = 1.0
+
+archs_list = ['vit']
+module = TrainTest(arch_name=archs_list[0])
 
 class Logger:
     def __init__(self, filename):
@@ -49,12 +50,18 @@ def read_logs():
     sys.stdout.flush()
     with open("output.log", "r") as f:
         return f.read()
+    
+def reload_module(arch_name):
+    global module
+    module = TrainTest(arch_name)
 
 with gr.Blocks() as demo:
     with gr.Tab('Train'):
+        architecture = gr.Dropdown(choices=archs_list, label='Architecture', value=archs_list[0])
         dataset_path = gr.Text(label='dataset path')
         btn = gr.Button("Train", variant='primary')
         btn.click(run_train, inputs=[dataset_path], outputs=None)
+        architecture.change(fn=reload_module, inputs=[architecture], outputs=[])
     with gr.Tab('Test'):
         with gr.Row():
             with gr.Column():
