@@ -247,7 +247,7 @@ def train(args, model):
     logger.info("End Training!")
 
 
-def main(dataset_path = 'dataset'):
+def main(dataset_path = 'dataset', output_path = None):
     args = vit_args.args
     checkpoints_path = os.path.join(os.path.dirname(__file__), 'output')
     previous_checkpoints = os.listdir(checkpoints_path)
@@ -284,6 +284,12 @@ def main(dataset_path = 'dataset'):
     # Training
     train(args, model)
 
+    if output_path is not None:
+        model_checkpoint = os.path.join(args.output_dir, "%s_checkpoint.bin" % args.name)
+        os.rename(
+            model_checkpoint,
+            os.path.join(output_path, 'checkpoint.bin')
+        )
 
 if __name__ == "__main__":
     if not os.path.exists('checkpoint/ViT-B_16.npz'):

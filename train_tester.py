@@ -2,18 +2,25 @@ from vit_pytorch.vit_train_test import VITTrainTest
 import os
 import shutil
 import random
+import json
 
 class TrainTest:
     def __init__(self, arch_name = 'vit') -> None:
+        self.out_folder = 'output'
+        os.makedirs(self.out_folder, exist_ok=True)
+        self.arch_name = arch_name
         self.module = None
-        if arch_name == 'vit':
+        if self.arch_name == 'vit':
             self.module = VITTrainTest()
+        self.write_to_config('arch', self.arch_name)
     
     def prepare_dataset(self, dataset_path):
         tmp_data_path = 'tmp_data'
         os.makedirs(tmp_data_path, exist_ok=True)
         
         class_folders = [ f.name for f in os.scandir(dataset_path) if f.is_dir() ]
+        class_folders.sort()
+        self.write_to_config('classes', class_folders)
         print(class_folders)
         
         for class_name in class_folders:
@@ -48,9 +55,23 @@ class TrainTest:
     def cleanup(self, dataset_path):
         shutil.rmtree(dataset_path)
     
+    def write_to_config(self, key, value):
+        config_path = os.path.join(self.out_folder, 'config.json')
+        config = {}
+        try:
+            with open(config_path, 'r') as file:
+                config = json.load(file)
+        except:
+            pass
+        
+        config[key] = value
+        
+        with open(config_path, 'w+') as file:
+            json.dump(config, file, indent=4)
+    
     def train(self, dataset_path):
         data_path = self.prepare_dataset(dataset_path)
-        self.module.train(data_path)
+        self.module.train(data_path, outfolder=self.out_folder)
         self.cleanup(data_path)
         
     def test(self, image):

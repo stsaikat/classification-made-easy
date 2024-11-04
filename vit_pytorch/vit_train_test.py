@@ -10,7 +10,7 @@ import test
 class VITTrainTest:
     def __init__(self) -> None:
         pass
-    def train(self, dataset_path):
-        train.main(dataset_path)
+    def train(self, dataset_path, outfolder = None):
+        train.main(dataset_path, output_path=outfolder)
     def test(self, image):
         return test.main(image)
