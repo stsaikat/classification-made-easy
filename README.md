@@ -12,6 +12,33 @@ pip install -r requirements.txt
 ```
 
 ## Usage
+
+### Dataset structure
+
+```
+dataset/
+│
+├── dogs/
+│   ├── dog1.jpg
+│   ├── dog2.jpg
+│   ├── dog3.jpg
+│   └── ... (more dog images)
+│
+├── cats/
+│   ├── cat1.jpg
+│   ├── cat2.jpg
+│   ├── cat3.jpg
+│   └── ... (more cat images)
+│
+├── birds/
+│   ├── bird1.jpg
+│   ├── bird2.jpg
+│   ├── bird3.jpg
+│   └── ... (more bird images)
+│
+└── ... (additional animal categories as needed)
+```
+
 ### Training
 
 ```python
