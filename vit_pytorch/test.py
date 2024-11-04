@@ -8,14 +8,16 @@ import os
 from PIL import Image
 from torchvision import transforms, datasets
 import vit_args
+import json
 
 logger = logging.getLogger(__name__)
 
 def setup(args):
     # Prepare model
     config = CONFIGS[args.model_type]
-    class_folders = [f.name for f in os.scandir(args.dataset_path) if f.is_dir()]
-    num_classes = len(class_folders)
+    
+    cme_config = get_cme_config(args)
+    num_classes = len(cme_config['classes'])
 
     model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes)
     logger.info(args.pretrained_dir)
@@ -43,14 +45,14 @@ def set_seed(args):
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
-def main(input_image):
+def main(input_image, pretrained_folder = None):
     args = vit_args.args
+    args.pretrained_folder = pretrained_folder
     
-    checkpoints_path = os.path.join(os.path.dirname(__file__), 'output')
-    previous_checkpoints = os.listdir(checkpoints_path)
-    if(len(previous_checkpoints) > 0):
-        previous_checkpoints.sort()
-        args.pretrained_dir = os.path.join(checkpoints_path, previous_checkpoints[-1])
+    args.pretrained_dir = os.path.join(args.pretrained_folder, 'checkpoint.bin')
+    
+    if not os.path.isfile(args.pretrained_dir):
+        raise Exception('pretrained model not found!')
 
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1:
@@ -93,7 +95,12 @@ def prepare_input(image, args):
     image = image.unsqueeze(0)
     image = image.to(args.device)
     return image
-    
+
+def get_cme_config(args):
+    cme_config_path = os.path.join(args.pretrained_folder, 'config.json')
+    with open(cme_config_path, 'r') as cme_config_file:
+        cme_config = json.load(cme_config_file)
+    return cme_config
     
 def test(args, model, input_image):
     model.eval()
@@ -106,10 +113,10 @@ def test(args, model, input_image):
         return "Can't recognize"
     pred = preds.detach().cpu().numpy()[0]
     
-    class_names = [f.name for f in os.scandir(args.dataset_path) if f.is_dir()]
-    class_names.sort()
-    logger.info(class_names[pred])
-    return class_names[pred]
+    cme_config = get_cme_config(args)
+    
+    logger.info(cme_config['classes'][pred])
+    return cme_config['classes'][pred]
     
 if __name__ == "__main__":
     if not os.path.exists('checkpoint/ViT-B_16.npz'):

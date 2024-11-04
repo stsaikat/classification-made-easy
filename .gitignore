@@ -167,3 +167,4 @@ logs/
 my_log.txt
 output/
 dataset/
+*.jpg

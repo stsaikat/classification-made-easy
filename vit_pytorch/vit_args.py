@@ -19,6 +19,9 @@ pretrained_path = os.path.join(os.path.dirname(__file__), "checkpoint/ViT-B_16.n
 parser.add_argument("--pretrained_dir", type=str, default=pretrained_path,
                     help="Where to search for pretrained ViT models.")
 
+parser.add_argument("--pretrained_folder", type=str, default=None,
+                    help="Where to search for pretrained models and configurations.")
+
 output_path = os.path.join(os.path.dirname(__file__), 'output')
 
 parser.add_argument("--output_dir", default=output_path, type=str,

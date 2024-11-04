@@ -4,7 +4,7 @@ import shutil
 import random
 import json
 
-class TrainTest:
+class Trainer:
     def __init__(self, arch_name = 'vit') -> None:
         self.out_folder = 'output'
         os.makedirs(self.out_folder, exist_ok=True)
@@ -73,6 +73,21 @@ class TrainTest:
         data_path = self.prepare_dataset(dataset_path)
         self.module.train(data_path, outfolder=self.out_folder)
         self.cleanup(data_path)
+    
+class Tester:
+    def __init__(self, pretrained_folder) -> None:
+        self.pretrained_folder = pretrained_folder
+        self.config = self.get_cme_config()
+        self.module = None
+        if self.config['arch'] == 'vit':
+            self.module = VITTrainTest()
         
+        
+    def get_cme_config(self):
+        cme_config_path = os.path.join(self.pretrained_folder, 'config.json')
+        with open(cme_config_path, 'r') as cme_config_file:
+            cme_config = json.load(cme_config_file)
+        return cme_config
+    
     def test(self, image):
-        return self.module.test(image)
+        return self.module.test(image, self.pretrained_folder)
